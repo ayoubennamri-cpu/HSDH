@@ -52,6 +52,7 @@ export default function App() {
   const [diameter, setDiameter] = useState<number>(0);
   const [dilutionRate, setDilutionRate] = useState<number>(10);
   const [customDensity, setCustomDensity] = useState<number | null>(null);
+  const [customCapacity, setCustomCapacity] = useState<number | null>(null);
   const [pigments, setPigments] = useState<Pigment[]>([]);
   const [newPigmentName, setNewPigmentName] = useState('');
   const [newPigmentPercentage, setNewPigmentPercentage] = useState<number>(0);
@@ -74,10 +75,11 @@ export default function App() {
     tanks.find(t => t.id === selectedTankId) || tanks[0], 
   [tanks, selectedTankId]);
 
-  // Reset custom density and conical volume when tank changes
+  // Reset custom density, capacity and conical volume when tank changes
   useEffect(() => {
     if (selectedTank) {
       setCustomDensity(selectedTank.densityGcm3);
+      setCustomCapacity(selectedTank.capacityL);
       setConicalVolumeL(selectedTank.conicalVolumeL || 0);
     }
   }, [selectedTankId]);
@@ -87,11 +89,12 @@ export default function App() {
     if (!selectedTank) return null;
 
     const effectiveDensity = customDensity ?? selectedTank.densityGcm3;
+    const effectiveCapacity = customCapacity ?? selectedTank.capacityL;
 
     let currentTankVolL = 0;
     if (inputMode === 'percentage') {
       // Measurable capacity is total capacity minus the conical part not seen by sensor
-      const measurableCapacity = selectedTank.capacityL - conicalVolumeL;
+      const measurableCapacity = effectiveCapacity - conicalVolumeL;
       currentTankVolL = (levelPercentage / 100) * measurableCapacity + conicalVolumeL;
     } else if (inputMode === 'liters') {
       currentTankVolL = levelLiters;
@@ -143,7 +146,7 @@ export default function App() {
       reductionNeededMass,
       conicalVolumeL
     };
-  }, [selectedTank, inputMode, levelPercentage, levelLiters, height, diameter, dilutionRate, pigments, customDensity, reductionInitialPercentage, reductionAddedMass, reductionTargetPercentage, reductionMode, conicalVolumeL]);
+  }, [selectedTank, inputMode, levelPercentage, levelLiters, height, diameter, dilutionRate, pigments, customDensity, customCapacity, reductionInitialPercentage, reductionAddedMass, reductionTargetPercentage, reductionMode, conicalVolumeL]);
 
   const addPigment = () => {
     if (!newPigmentName) return;
@@ -218,6 +221,7 @@ export default function App() {
         ['Masse Totale', results.totalMassKg.toFixed(2), 'KG'],
         ['Produit Pur Estimé', results.pureProductKg.toFixed(2), 'KG'],
         ['Taux de Dilution', dilutionRate.toFixed(1), '%'],
+        ['Capacité Appliquée', (customCapacity ?? selectedTank.capacityL).toFixed(1), 'L'],
         ['Densité Appliquée', (customDensity ?? selectedTank.densityGcm3).toFixed(3), 'g/cm³']
       ],
       theme: 'striped',
@@ -411,7 +415,7 @@ export default function App() {
                   <span className="text-3xl font-mono font-bold text-indigo-600">{levelPercentage}%</span>
                   <div className="text-right">
                     <span className="block text-[10px] text-zinc-400 uppercase">Capacité Mesurable</span>
-                    <span className="text-xs font-bold text-zinc-500">{(selectedTank.capacityL - conicalVolumeL).toFixed(1)} L</span>
+                    <span className="text-xs font-bold text-zinc-500">{( (customCapacity ?? selectedTank.capacityL) - conicalVolumeL).toFixed(1)} L</span>
                   </div>
                 </div>
                 <input 
@@ -490,6 +494,23 @@ export default function App() {
           <section className="glass-card p-5 space-y-4">
             <div className="space-y-2">
               <label className="label-text flex items-center gap-2">
+                <Droplets className="w-3 h-3" />
+                Capacité Cuve (L)
+              </label>
+              <div className="relative">
+                <input 
+                  type="number" 
+                  value={customCapacity ?? ''}
+                  onChange={(e) => setCustomCapacity(e.target.value ? Number(e.target.value) : null)}
+                  className="input-field pr-12"
+                  placeholder={selectedTank?.capacityL.toString()}
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 font-mono font-bold">L</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="label-text flex items-center gap-2">
                 <Ruler className="w-3 h-3" />
                 Masse Volumique (g/cm³)
               </label>
@@ -497,7 +518,7 @@ export default function App() {
                 <input 
                   type="number" 
                   value={customDensity ?? ''}
-                  onChange={(e) => setCustomDensity(Number(e.target.value))}
+                  onChange={(e) => setCustomDensity(e.target.value ? Number(e.target.value) : null)}
                   className="input-field pr-12"
                   step="0.001"
                   placeholder={selectedTank?.densityGcm3.toString()}

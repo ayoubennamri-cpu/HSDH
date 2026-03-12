@@ -53,6 +53,7 @@ export default function App() {
   const [dilutionRate, setDilutionRate] = useState<number>(10);
   const [customDensity, setCustomDensity] = useState<number | null>(null);
   const [customCapacity, setCustomCapacity] = useState<number | null>(null);
+  const [customCircuitVolume, setCustomCircuitVolume] = useState<number | null>(null);
   const [pigments, setPigments] = useState<Pigment[]>([]);
   const [newPigmentName, setNewPigmentName] = useState('');
   const [newPigmentPercentage, setNewPigmentPercentage] = useState<number>(0);
@@ -75,11 +76,12 @@ export default function App() {
     tanks.find(t => t.id === selectedTankId) || tanks[0], 
   [tanks, selectedTankId]);
 
-  // Reset custom density, capacity and conical volume when tank changes
+  // Reset custom density, capacity, circuit and conical volume when tank changes
   useEffect(() => {
     if (selectedTank) {
       setCustomDensity(selectedTank.densityGcm3);
       setCustomCapacity(selectedTank.capacityL);
+      setCustomCircuitVolume(selectedTank.circuitVolumeL);
       setConicalVolumeL(selectedTank.conicalVolumeL || 0);
     }
   }, [selectedTankId]);
@@ -90,6 +92,7 @@ export default function App() {
 
     const effectiveDensity = customDensity ?? selectedTank.densityGcm3;
     const effectiveCapacity = customCapacity ?? selectedTank.capacityL;
+    const effectiveCircuitVolume = customCircuitVolume ?? selectedTank.circuitVolumeL;
 
     let currentTankVolL = 0;
     if (inputMode === 'percentage') {
@@ -104,9 +107,9 @@ export default function App() {
       currentTankVolL = (volumeCm3 / 1000) + conicalVolumeL;
     }
 
-    const totalVolL = currentTankVolL + selectedTank.circuitVolumeL;
+    const totalVolL = currentTankVolL + effectiveCircuitVolume;
     const tankMassKg = currentTankVolL * effectiveDensity;
-    const circuitMassKg = selectedTank.circuitVolumeL * effectiveDensity;
+    const circuitMassKg = effectiveCircuitVolume * effectiveDensity;
     const totalMassKg = totalVolL * effectiveDensity;
     
     // Formula: Mass Total (KG) - Taux de Dilution (%)
@@ -136,7 +139,6 @@ export default function App() {
     return {
       tankVolumeL: currentTankVolL,
       tankMassKg,
-      circuitVolumeL: selectedTank.circuitVolumeL,
       circuitMassKg,
       totalVolumeL: totalVolL,
       totalMassKg,
@@ -144,9 +146,10 @@ export default function App() {
       pigmentResults,
       reductionResult,
       reductionNeededMass,
-      conicalVolumeL
+      conicalVolumeL,
+      circuitVolumeL: effectiveCircuitVolume
     };
-  }, [selectedTank, inputMode, levelPercentage, levelLiters, height, diameter, dilutionRate, pigments, customDensity, customCapacity, reductionInitialPercentage, reductionAddedMass, reductionTargetPercentage, reductionMode, conicalVolumeL]);
+  }, [selectedTank, inputMode, levelPercentage, levelLiters, height, diameter, dilutionRate, pigments, customDensity, customCapacity, customCircuitVolume, reductionInitialPercentage, reductionAddedMass, reductionTargetPercentage, reductionMode, conicalVolumeL]);
 
   const addPigment = () => {
     if (!newPigmentName) return;
@@ -222,6 +225,7 @@ export default function App() {
         ['Produit Pur Estimé', results.pureProductKg.toFixed(2), 'KG'],
         ['Taux de Dilution', dilutionRate.toFixed(1), '%'],
         ['Capacité Appliquée', (customCapacity ?? selectedTank.capacityL).toFixed(1), 'L'],
+        ['Circuit Appliqué', (customCircuitVolume ?? selectedTank.circuitVolumeL).toFixed(1), 'L'],
         ['Densité Appliquée', (customDensity ?? selectedTank.densityGcm3).toFixed(3), 'g/cm³']
       ],
       theme: 'striped',
@@ -541,6 +545,42 @@ export default function App() {
                   step="0.1"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 font-mono font-bold">%</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="label-text flex items-center gap-2">
+                  <Activity className="w-3 h-3" />
+                  Volume Circuit (L)
+                </label>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    value={customCircuitVolume ?? ''}
+                    onChange={(e) => setCustomCircuitVolume(e.target.value ? Number(e.target.value) : null)}
+                    className="input-field pr-12"
+                    placeholder={selectedTank?.circuitVolumeL.toString()}
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 font-mono font-bold">L</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="label-text flex items-center gap-2">
+                  <Droplets className="w-3 h-3" />
+                  Volume Conique (L)
+                </label>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    value={conicalVolumeL || ''}
+                    onChange={(e) => setConicalVolumeL(Number(e.target.value))}
+                    className="input-field pr-12"
+                    placeholder={selectedTank?.conicalVolumeL?.toString()}
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 font-mono font-bold">L</span>
+                </div>
               </div>
             </div>
 
